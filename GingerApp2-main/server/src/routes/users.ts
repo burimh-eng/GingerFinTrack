@@ -5,9 +5,11 @@ import { prisma } from '../lib/prisma';
 const router = Router();
 
 const userSchema = z.object({
+  username: z.string().min(2),
+  password: z.string().min(6),
   email: z.string().email(),
   fullName: z.string().min(2),
-  role: z.string().default('owner'),
+  role: z.string().default('VIEWER'),
 });
 
 router.get('/', async (_req: Request, res: Response, next: NextFunction) => {

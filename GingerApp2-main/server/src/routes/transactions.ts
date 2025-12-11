@@ -31,7 +31,12 @@ const ensureUser = async (userId: string | undefined, name: string) => {
   return prisma.user.upsert({
     where: { email: userEmailFromName(name) },
     update: { fullName: name },
-    create: { email: userEmailFromName(name), fullName: name },
+    create: { 
+      email: userEmailFromName(name), 
+      fullName: name,
+      username: name.trim().toLowerCase().replace(/\s+/g, '.'),
+      password: '$2b$10$placeholder', // Placeholder - these users can't login
+    },
   });
 };
 
@@ -114,7 +119,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 
     // Filter out incoming transfers for display purposes
     const filteredTransactions = transactions.filter(txn => {
-      if (txn.subcategory.category.name === 'Transfere' && txn.amount < 0) {
+      if (txn.subcategory.category.name === 'Transfere' && Number(txn.amount) < 0) {
         return false; // Exclude incoming transfers (negative amounts)
       }
       return true;
