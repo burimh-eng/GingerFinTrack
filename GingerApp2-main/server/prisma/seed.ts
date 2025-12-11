@@ -4,7 +4,9 @@ import bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function seedUsers() {
-  const hashedPassword = await bcrypt.hash('123456', 10);
+  const seedPassword = process.env.SEED_PASSWORD || 'changeme';
+  const hashedPassword = await bcrypt.hash(seedPassword, 10);
+  console.log('Using seed password from environment (or default "changeme")');
   
   const [burimi, skenderi] = await Promise.all([
     prisma.user.upsert({
