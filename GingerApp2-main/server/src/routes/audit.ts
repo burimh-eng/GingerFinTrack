@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { getAuditLogs, getUserActivity, createAuditLog } from '../utils/auditLogger';
+import { getAuditLogs, getUserActivity, createAuditLog } from '../utils/auditLogger.js';
 
 const router = Router();
 
@@ -84,7 +84,7 @@ router.get('/', async (req: Request, res: Response) => {
 // Get all unique usernames in audit log (for debugging)
 router.get('/usernames', async (req: Request, res: Response) => {
   try {
-    const { prisma } = await import('../lib/prisma');
+    const { prisma } = await import('../lib/prisma.js');
     const logs = await prisma.auditLog.findMany({
       select: { username: true },
       distinct: ['username'],

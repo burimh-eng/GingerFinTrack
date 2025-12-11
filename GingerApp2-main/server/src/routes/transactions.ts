@@ -1,8 +1,8 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
-import { prisma } from '../lib/prisma';
-import { transactionSchema } from '../validators/transaction.schema';
-import { authenticateToken, requireAdmin } from '../routes/auth';
-import { createAuditLog } from '../utils/auditLogger';
+import { prisma } from '../lib/prisma.js';
+import { transactionSchema } from '../validators/transaction.schema.js';
+import { authenticateToken, requireAdmin } from '../routes/auth.js';
+import { createAuditLog } from '../utils/auditLogger.js';
 
 const router = Router();
 

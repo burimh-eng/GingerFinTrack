@@ -2,14 +2,14 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
-import usersRoute from './routes/users';
-import projectsRoute from './routes/projects';
-import tasksRoute from './routes/tasks';
-import transactionsRoute from './routes/transactions';
-import authRouter from './routes/auth';
-import auditRouter from './routes/audit';
-import { errorHandler } from './middleware/errorHandler';
-import { prisma } from './lib/prisma';
+import usersRoute from './routes/users.js';
+import projectsRoute from './routes/projects.js';
+import tasksRoute from './routes/tasks.js';
+import transactionsRoute from './routes/transactions.js';
+import authRouter from './routes/auth.js';
+import auditRouter from './routes/audit.js';
+import { errorHandler } from './middleware/errorHandler.js';
+import { prisma } from './lib/prisma.js';
 
 const app = express();
 
