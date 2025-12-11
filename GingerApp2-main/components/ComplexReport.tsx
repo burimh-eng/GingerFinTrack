@@ -77,19 +77,13 @@ const ComplexReport: React.FC<Props> = ({ transactions }) => {
 
     // Calculate Totals per row
     const result = Array.from(monthsMap.values()).map(stats => {
-        // Burimi Total = Te Hyra Ginger + Te Hyra (Non-G) + Transfere (from Skenderi) - Transfere (out) - Shpenzime GINGER - Shpenzime (Non-G)
-        stats.burimi_total = (stats.burimi_income_ginger + stats.burimi_income_other) 
-                           + stats.skenderi_transfer 
-                           - stats.burimi_transfer 
-                           - stats.burimi_expense_ginger 
-                           - stats.burimi_expense_other;
+        const burimiGingerNet = stats.burimi_income_ginger - stats.burimi_expense_ginger - stats.burimi_transfer;
+        const burimiOtherNet = stats.burimi_income_other - stats.burimi_expense_other;
+        stats.burimi_total = burimiGingerNet + burimiOtherNet + stats.skenderi_transfer;
         
-        // Skenderi Total = Te Hyra Ginger + Te Hyra (Non-G) + Transfere (from Burimi) - Transfere (out) - Shpenzime GINGER - Shpenzime (Non-G)
-        stats.skenderi_total = (stats.skenderi_income_ginger + stats.skenderi_income_other) 
-                             + stats.burimi_transfer 
-                             - stats.skenderi_transfer 
-                             - stats.skenderi_expense_ginger 
-                             - stats.skenderi_expense_other;
+        const skenderiGingerNet = stats.skenderi_income_ginger - stats.skenderi_expense_ginger - stats.skenderi_transfer;
+        const skenderiOtherNet = stats.skenderi_income_other - stats.skenderi_expense_other;
+        stats.skenderi_total = skenderiGingerNet + skenderiOtherNet + stats.burimi_transfer;
 
         stats.total_net = stats.burimi_total + stats.skenderi_total; // Grand Total
 
