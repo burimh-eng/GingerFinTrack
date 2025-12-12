@@ -132,13 +132,28 @@ const ImportData: React.FC = () => {
       // Get current username for audit logging
       const username = localStorage.getItem('username') || 'Unknown';
       
-      const response = await fetch(`${API_BASE}/transactions/import`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ transactions, importedBy: username }),
-      });
+      // Add timeout to prevent infinite hanging (2 minutes for large imports)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000);
+      
+      let response: Response;
+      try {
+        response = await fetch(`${API_BASE}/transactions/import`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ transactions, importedBy: username }),
+          signal: controller.signal,
+        });
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        if (fetchError.name === 'AbortError') {
+          throw new Error(t('importTimeoutError') || 'Import timed out. The server may be starting up - please try again in 30 seconds.');
+        }
+        throw new Error(`Network error: ${fetchError.message}`);
+      }
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         let errorMessage = t('failedToImportError');
