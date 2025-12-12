@@ -240,7 +240,7 @@ const TransactionList: React.FC<Props> = ({ transactions, onDelete, onUpdate, li
                         <td className="px-3 py-1.5 text-gray-500 truncate max-w-[150px]" title={txn.description || ''}>{txn.description || ''}</td>
                         <td className="px-3 py-1.5 text-center">
                           <div className="flex items-center justify-center gap-1">
-                            {role === 'ADMIN' && onUpdate && (
+                            {(role === 'ADMIN' || username === 'Skender') && onUpdate && (
                               <button 
                                 onClick={() => startEdit(txn)}
                                 className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded p-1 transition-colors"

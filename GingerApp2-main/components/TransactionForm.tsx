@@ -10,7 +10,7 @@ interface Props {
 }
 
 const TransactionForm: React.FC<Props> = ({ onAdd }) => {
-  const { role } = useAuth();
+  const { role, username } = useAuth();
   const { t } = useTranslation();
   const { options } = useOptionLists();
   const accounts = useMemo(() => options.accounts, [options.accounts]);
@@ -18,8 +18,9 @@ const TransactionForm: React.FC<Props> = ({ onAdd }) => {
   const subCategories = useMemo(() => options.subCategories, [options.subCategories]);
   const names = useMemo(() => options.names, [options.names]);
 
-  if (role !== 'ADMIN') {
-    return null; // Hide form for non-admin users
+  // Allow ADMIN role OR Skender username to add data
+  if (role !== 'ADMIN' && username !== 'Skender') {
+    return null; // Hide form for users without permission
   }
 
   const [formData, setFormData] = useState<Partial<Transaction>>({
