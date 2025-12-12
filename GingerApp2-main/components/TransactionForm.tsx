@@ -125,6 +125,7 @@ const TransactionForm: React.FC<Props> = ({ onAdd }) => {
             value={formData.subCategory}
             onChange={(e) => handleChange('subCategory', e.target.value)}
           >
+            <option value="">{t('selectSubCategory') || '-- Select --'}</option>
             {subCategories.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>

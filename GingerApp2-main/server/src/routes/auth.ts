@@ -98,6 +98,8 @@ router.post('/reset-password', async (req: Request, res: Response, next: NextFun
   try {
     const { adminUsername, targetUsername, newPassword } = req.body;
     
+    console.log(`Password reset attempt: admin=${adminUsername}, target=${targetUsername}`);
+    
     if (!adminUsername || !targetUsername || !newPassword) {
       return res.status(400).json({ error: 'Admin username, target username, and new password are required' });
     }
@@ -113,17 +115,23 @@ router.post('/reset-password', async (req: Request, res: Response, next: NextFun
 
     const targetUser = await prisma.user.findUnique({ where: { username: targetUsername } });
     if (!targetUser) {
+      console.log(`Target user not found: ${targetUsername}`);
       return res.status(404).json({ error: 'Target user not found' });
     }
 
+    console.log(`Found target user: id=${targetUser.id}, username=${targetUser.username}`);
+
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await prisma.user.update({
-      where: { username: targetUsername },
+    const updatedUser = await prisma.user.update({
+      where: { id: targetUser.id }, // Use ID instead of username for more reliable update
       data: { password: hashedPassword },
     });
 
+    console.log(`Password updated for user: id=${updatedUser.id}, username=${updatedUser.username}`);
+
     res.json({ success: true, message: `Password reset successfully for ${targetUsername}` });
   } catch (err) {
+    console.error('Password reset error:', err);
     next(err);
   }
 });
