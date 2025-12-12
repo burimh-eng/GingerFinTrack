@@ -3,6 +3,8 @@ import { Upload, FileSpreadsheet, AlertCircle, CheckCircle } from 'lucide-react'
 import { useAuth } from '../index';
 import { useTranslation } from 'react-i18next';
 
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
+
 interface ImportResult {
   success: number;
   failed: number;
@@ -130,7 +132,7 @@ const ImportData: React.FC = () => {
       // Get current username for audit logging
       const username = localStorage.getItem('username') || 'Unknown';
       
-      const response = await fetch('/api/transactions/import', {
+      const response = await fetch(`${API_BASE}/transactions/import`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
