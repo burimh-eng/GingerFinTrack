@@ -120,7 +120,7 @@ const ImportData: React.FC = () => {
           category: row.category,
           subCategory: row.subCategory || row.category, // Use category as fallback if subCategory is empty
           amount: parseFloat(row.amount),
-          notes: row.notes || '',
+          notes: row.note || row.notes || '', // Support both 'note' (shënime) and 'notes' column names
           description: row.description || '',
           projectName: 'Ginger HQ' // Default project
         };
@@ -156,13 +156,6 @@ const ImportData: React.FC = () => {
       // Reset file input
       const fileInput = document.getElementById('file-input') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
-
-      // Refresh the page after successful import
-      if (resultData.success > 0) {
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
-      }
     } catch (err) {
       setError(err instanceof Error ? err.message : t('failedToImportError'));
     } finally {
@@ -244,31 +237,47 @@ const ImportData: React.FC = () => {
 
       {/* Success Result */}
       {result && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+        <div className={`${result.failed > 0 ? 'bg-orange-50 border-orange-200' : 'bg-green-50 border-green-200'} border rounded-lg p-4 mb-6`}>
           <div className="flex items-start mb-2">
-            <CheckCircle className="w-5 h-5 text-green-600 mr-2 flex-shrink-0 mt-0.5" />
+            <CheckCircle className={`w-5 h-5 ${result.failed > 0 ? 'text-orange-600' : 'text-green-600'} mr-2 flex-shrink-0 mt-0.5`} />
             <div className="flex-1">
-              <p className="text-green-800 font-semibold">{t('importComplete')}</p>
+              <p className={`${result.failed > 0 ? 'text-orange-800' : 'text-green-800'} font-semibold`}>{t('importComplete')}</p>
               <p className="text-green-700 text-sm mt-1">
                 {t('importSuccessSummary', { count: result.success })}
               </p>
               {result.failed > 0 && (
-                <p className="text-orange-700 text-sm">
+                <p className="text-red-700 text-sm font-medium">
                   {t('importFailedSummary', { count: result.failed })}
                 </p>
               )}
-              {result.errors.length > 0 && (
-                <div className="mt-2">
-                  <p className="text-sm font-medium text-gray-700">{t('importErrorsLabel')}</p>
-                  <ul className="text-xs text-gray-600 list-disc list-inside mt-1">
-                    {result.errors.slice(0, 5).map((err, idx) => (
-                      <li key={idx}>{err}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
             </div>
           </div>
+          
+          {/* Detailed Error List */}
+          {result.errors.length > 0 && (
+            <div className="mt-4 bg-white rounded-lg border border-red-200 overflow-hidden">
+              <div className="bg-red-100 px-4 py-2 border-b border-red-200">
+                <p className="text-sm font-semibold text-red-800">{t('importErrorsLabel')} ({result.errors.length})</p>
+              </div>
+              <div className="max-h-64 overflow-y-auto">
+                <table className="w-full text-xs">
+                  <tbody className="divide-y divide-red-100">
+                    {result.errors.map((err, idx) => {
+                      const rowMatch = err.match(/^Row (\d+): (.+)$/);
+                      const rowNum = rowMatch ? rowMatch[1] : '-';
+                      const errorMsg = rowMatch ? rowMatch[2] : err;
+                      return (
+                        <tr key={idx} className="hover:bg-red-50">
+                          <td className="px-3 py-2 font-medium text-red-700 whitespace-nowrap w-16">Row {rowNum}</td>
+                          <td className="px-3 py-2 text-red-600">{errorMsg}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

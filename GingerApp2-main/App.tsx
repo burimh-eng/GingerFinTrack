@@ -3,21 +3,22 @@ import TransactionForm from './components/TransactionForm';
 import TransactionList from './components/TransactionList';
 import ComplexReport from './components/ComplexReport';
 import VisualDashboard from './components/VisualDashboard';
-import AiInsights from './components/AiInsights';
+// import AiInsights from './components/AiInsights'; // Removed from dashboard
 import ImportData from './components/ImportData';
 import FilterDashboard from './components/FilterDashboard';
 import ActivityMonitor from './components/ActivityMonitor';
 import OptionManager from './components/OptionManager';
+import PasswordManager from './components/PasswordManager';
 import { Transaction } from './types';
-import { fetchTransactions, createTransaction, removeTransaction } from './services/dataService';
-import { LayoutDashboard, FileSpreadsheet, List, PieChart, Table as TableIcon, LogOut, User, Upload, Filter, Activity, Globe } from 'lucide-react';
+import { fetchTransactions, createTransaction, removeTransaction, updateTransaction } from './services/dataService';
+import { LayoutDashboard, FileSpreadsheet, List, PieChart, Table as TableIcon, LogOut, User, Upload, Filter, Activity, Globe, Key } from 'lucide-react';
 import { useAuth } from './index';
 import { useTranslation } from 'react-i18next';
 
 const App: React.FC = () => {
   const { username, role, logout } = useAuth();
   const { t, i18n } = useTranslation();
-  const [activeTab, setActiveTab] = useState<'entry' | 'transactions' | 'report' | 'dashboard' | 'import' | 'filter' | 'activity' | 'lists'>('entry');
+  const [activeTab, setActiveTab] = useState<'entry' | 'transactions' | 'report' | 'dashboard' | 'import' | 'filter' | 'activity' | 'lists' | 'password'>('entry');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -63,6 +64,11 @@ const App: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
+      // Only Burim can delete records
+      if (username !== 'Burim') {
+        alert('Only Burim can delete records.');
+        return;
+      }
       if(window.confirm('Are you sure you want to delete this record?')) {
         try {
           await removeTransaction(id);
@@ -71,6 +77,25 @@ const App: React.FC = () => {
           console.error('Failed to delete transaction', error);
         }
       }
+  };
+
+  const handleUpdate = async (id: string, data: Partial<Transaction>) => {
+    try {
+      await updateTransaction(id, {
+        date: data.date!,
+        account: data.account!,
+        category: data.category!,
+        subCategory: data.subCategory!,
+        notes: data.notes || '',
+        amount: data.amount!,
+        name: data.name!,
+        description: data.description || '',
+      });
+      await loadTransactions();
+    } catch (error) {
+      console.error('Failed to update transaction', error);
+      throw error;
+    }
   };
 
   return (
@@ -135,15 +160,19 @@ const App: React.FC = () => {
                 <Filter className="w-5 h-5" />
                 <span className="font-medium">{t('filterDashboard')}</span>
             </button>
+            {/* Activity Monitor - only for Burim (ADMIN) */}
+            {username === 'Burim' && (
+              <button 
+                  onClick={() => setActiveTab('activity')}
+                  className={`w-full flex items-center gap-3 px-6 py-4 hover:bg-gray-800 transition-all border-l-4 ${activeTab === 'activity' ? 'bg-gray-800 border-green-500 text-green-400' : 'border-transparent text-gray-300'}`}
+              >
+                  <Activity className="w-5 h-5" />
+                  <span className="font-medium">{t('activityMonitor')}</span>
+              </button>
+            )}
+            {/* Import, Lists - for ADMIN users (Burim and Skender) */}
             {role === 'ADMIN' && (
               <>
-                <button 
-                    onClick={() => setActiveTab('activity')}
-                    className={`w-full flex items-center gap-3 px-6 py-4 hover:bg-gray-800 transition-all border-l-4 ${activeTab === 'activity' ? 'bg-gray-800 border-green-500 text-green-400' : 'border-transparent text-gray-300'}`}
-                >
-                    <Activity className="w-5 h-5" />
-                    <span className="font-medium">{t('activityMonitor')}</span>
-                </button>
                 <button 
                     onClick={() => setActiveTab('import')}
                     className={`w-full flex items-center gap-3 px-6 py-4 hover:bg-gray-800 transition-all border-l-4 ${activeTab === 'import' ? 'bg-gray-800 border-green-500 text-green-400' : 'border-transparent text-gray-300'}`}
@@ -160,6 +189,14 @@ const App: React.FC = () => {
                 </button>
               </>
             )}
+            {/* Password Settings - available to all users */}
+            <button
+                onClick={() => setActiveTab('password')}
+                className={`w-full flex items-center gap-3 px-6 py-4 hover:bg-gray-800 transition-all border-l-4 ${activeTab === 'password' ? 'bg-gray-800 border-green-500 text-green-400' : 'border-transparent text-gray-300'}`}
+            >
+                <Key className="w-5 h-5" />
+                <span className="font-medium">{t('passwordSettings')}</span>
+            </button>
         </nav>
         <div className="p-6 text-xs text-gray-500 border-t border-gray-800">
             v1.0.1
@@ -180,6 +217,7 @@ const App: React.FC = () => {
                     {activeTab === 'activity' && t('activityMonitor')}
                     {activeTab === 'import' && t('importTransactions')}
                     {activeTab === 'lists' && t('optionManagerTab')}
+                    {activeTab === 'password' && t('passwordSettings')}
                 </h2>
                 <p className="text-sm text-gray-500 mt-1">
                     {activeTab === 'entry' && t('addTransactionDesc')}
@@ -190,6 +228,7 @@ const App: React.FC = () => {
                     {activeTab === 'activity' && t('monitorDesc')}
                     {activeTab === 'import' && t('bulkImportDesc')}
                     {activeTab === 'lists' && t('manageListsNavDescription')}
+                    {activeTab === 'password' && t('passwordSettingsDesc')}
                 </p>
              </div>
              
@@ -212,14 +251,14 @@ const App: React.FC = () => {
                 <div className="mt-8">
                     <h3 className="text-gray-500 text-sm font-bold uppercase tracking-wide mb-3">Recently Added</h3>
                     {/* Only show the last 5 items here to keep the entry page clean */}
-                    <TransactionList transactions={transactions} onDelete={handleDelete} limit={5} showSearch={false} />
+                    <TransactionList transactions={transactions} onDelete={handleDelete} onUpdate={handleUpdate} limit={5} showSearch={false} />
                 </div>
             </div>
         )}
 
         {activeTab === 'transactions' && (
             <div className="animate-fade-in h-[calc(100vh-140px)]">
-                <TransactionList transactions={transactions} onDelete={handleDelete} />
+                <TransactionList transactions={transactions} onDelete={handleDelete} onUpdate={handleUpdate} />
             </div>
         )}
 
@@ -232,7 +271,6 @@ const App: React.FC = () => {
         {activeTab === 'dashboard' && (
             <div className="animate-fade-in pb-10 max-w-6xl mx-auto">
                 <VisualDashboard transactions={transactions} />
-                <AiInsights transactions={transactions} />
             </div>
         )}
 
@@ -257,6 +295,12 @@ const App: React.FC = () => {
         {activeTab === 'lists' && role === 'ADMIN' && (
             <div className="animate-fade-in max-w-4xl mx-auto">
                 <OptionManager transactions={transactions} />
+            </div>
+        )}
+
+        {activeTab === 'password' && (
+            <div className="animate-fade-in max-w-2xl mx-auto">
+                <PasswordManager currentUsername={username || ''} />
             </div>
         )}
 

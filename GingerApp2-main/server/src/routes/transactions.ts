@@ -188,6 +188,17 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
 router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const payload = transactionSchema.parse(req.body);
+    
+    // Get the original transaction BEFORE updating to track changes
+    const original = await prisma.transaction.findUnique({
+      where: { id: req.params.id },
+      include: transactionInclude,
+    });
+
+    if (!original) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+
     const data = await mapPayloadToData(payload);
     
     // Add modifiedBy field
@@ -203,17 +214,80 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
       include: transactionInclude,
     });
 
-    // Log the UPDATE action
+    // Build detailed change log - track what changed from what to what
+    const changes: { field: string; from: any; to: any }[] = [];
+    
+    // Compare date
+    const originalDate = original.txnDate.toISOString().split('T')[0];
+    if (originalDate !== payload.date) {
+      changes.push({ field: 'date', from: originalDate, to: payload.date });
+    }
+    
+    // Compare account
+    if (original.account.name !== payload.account) {
+      changes.push({ field: 'account', from: original.account.name, to: payload.account });
+    }
+    
+    // Compare category
+    if (original.subcategory.category.name !== payload.category) {
+      changes.push({ field: 'category', from: original.subcategory.category.name, to: payload.category });
+    }
+    
+    // Compare subCategory
+    if (original.subcategory.name !== payload.subCategory) {
+      changes.push({ field: 'subCategory', from: original.subcategory.name, to: payload.subCategory });
+    }
+    
+    // Compare amount
+    const originalAmount = Number(original.amount);
+    if (originalAmount !== payload.amount) {
+      changes.push({ field: 'amount', from: originalAmount, to: payload.amount });
+    }
+    
+    // Compare name (user)
+    if (original.user.fullName !== payload.name) {
+      changes.push({ field: 'name', from: original.user.fullName, to: payload.name });
+    }
+    
+    // Compare notes
+    if ((original.notes || '') !== (payload.notes || '')) {
+      changes.push({ field: 'notes', from: original.notes || '', to: payload.notes || '' });
+    }
+    
+    // Compare description
+    if ((original.description || '') !== (payload.description || '')) {
+      changes.push({ field: 'description', from: original.description || '', to: payload.description || '' });
+    }
+
+    // Log the UPDATE action with detailed changes
     await createAuditLog({
       username,
       action: 'UPDATE',
       entityType: 'TRANSACTION',
       entityId: updated.id,
       details: {
-        amount: payload.amount,
-        category: payload.category,
-        subCategory: payload.subCategory,
-        date: payload.date,
+        changes,
+        changesCount: changes.length,
+        originalValues: {
+          date: originalDate,
+          account: original.account.name,
+          category: original.subcategory.category.name,
+          subCategory: original.subcategory.name,
+          amount: originalAmount,
+          name: original.user.fullName,
+          notes: original.notes || '',
+          description: original.description || '',
+        },
+        newValues: {
+          date: payload.date,
+          account: payload.account,
+          category: payload.category,
+          subCategory: payload.subCategory,
+          amount: payload.amount,
+          name: payload.name,
+          notes: payload.notes || '',
+          description: payload.description || '',
+        },
       },
       req,
     });
@@ -277,19 +351,74 @@ router.post('/import', async (req: Request, res: Response, next: NextFunction) =
     for (let i = 0; i < transactions.length; i++) {
       try {
         const txn = transactions[i];
+        const rowNum = i + 2; // +2 because row 1 is header, and we're 0-indexed
         
-        // Validate required fields
-        if (!txn.date || !txn.name || !txn.account || !txn.category || !txn.subCategory || txn.amount === undefined) {
-          throw new Error(`Missing required fields`);
+        // Detailed validation with specific error messages
+        const validationErrors: string[] = [];
+        let normalizedDate: string | null = null;
+        
+        if (!txn.date) {
+          validationErrors.push('date is missing');
+        } else {
+          // Validate date format: support YYYY-MM-DD and DD/MM/YYYY
+          const isoPattern = /^\d{4}-\d{2}-\d{2}$/;      // 2025-04-16
+          const euPattern = /^\d{2}\/\d{2}\/\d{4}$/;   // 16/04/2025
+
+          if (isoPattern.test(txn.date)) {
+            normalizedDate = txn.date;
+          } else if (euPattern.test(txn.date)) {
+            const [day, month, year] = txn.date.split('/');
+            normalizedDate = `${year}-${month}-${day}`; // convert to ISO
+          } else {
+            validationErrors.push(`date "${txn.date}" is invalid (use YYYY-MM-DD or DD/MM/YYYY)`);
+          }
+
+          if (normalizedDate) {
+            const parsedDate = new Date(normalizedDate);
+            if (isNaN(parsedDate.getTime())) {
+              validationErrors.push(`date "${txn.date}" could not be parsed`);
+            }
+          }
+        }
+        
+        if (!txn.name) {
+          validationErrors.push('name is missing');
+        } else if (!['Burimi', 'Skenderi'].includes(txn.name)) {
+          validationErrors.push(`name "${txn.name}" is invalid (must be "Burimi" or "Skenderi")`);
+        }
+        
+        if (!txn.account) {
+          validationErrors.push('account is missing');
+        }
+        
+        if (!txn.category) {
+          validationErrors.push('category is missing');
+        } else if (!['Te Hyra', 'Shpenzime', 'Transfere'].includes(txn.category)) {
+          validationErrors.push(`category "${txn.category}" is invalid (must be "Te Hyra", "Shpenzime", or "Transfere")`);
+        }
+        
+        if (txn.amount === undefined || txn.amount === null || txn.amount === '') {
+          validationErrors.push('amount is missing');
+        } else {
+          const parsedAmount = parseFloat(txn.amount);
+          if (isNaN(parsedAmount)) {
+            validationErrors.push(`amount "${txn.amount}" is not a valid number`);
+          }
+        }
+        
+        if (validationErrors.length > 0) {
+          throw new Error(validationErrors.join('; '));
         }
 
         // Map the data using existing helper functions
         const payload = {
-          date: txn.date,
+          // Use normalized ISO date so downstream mapping always receives a valid format
+          date: normalizedDate || txn.date,
           name: txn.name,
           account: txn.account,
           category: txn.category,
-          subCategory: txn.subCategory,
+          // subCategory is allowed to be empty; normalize missing to empty string
+          subCategory: txn.subCategory || '',
           amount: parseFloat(txn.amount),
           notes: txn.notes || '',
           description: txn.description || '',
@@ -310,8 +439,8 @@ router.post('/import', async (req: Request, res: Response, next: NextFunction) =
       } catch (err) {
         results.failed++;
         const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-        results.errors.push(`Row ${i + 1}: ${errorMsg}`);
-        console.error(`Failed to import transaction ${i + 1}:`, errorMsg);
+        results.errors.push(`Row ${i + 2}: ${errorMsg}`);
+        console.error(`Failed to import transaction row ${i + 2}:`, errorMsg);
       }
     }
 

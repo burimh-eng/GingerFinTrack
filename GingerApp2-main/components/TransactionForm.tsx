@@ -60,7 +60,16 @@ const TransactionForm: React.FC<Props> = ({ onAdd }) => {
   };
 
   const handleChange = (field: keyof Transaction, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const next = { ...prev, [field]: value };
+
+      // If category is set to 'Transfere', clear subCategory by default
+      if (field === 'category' && value === 'Transfere') {
+        next.subCategory = '';
+      }
+
+      return next;
+    });
   };
 
   return (

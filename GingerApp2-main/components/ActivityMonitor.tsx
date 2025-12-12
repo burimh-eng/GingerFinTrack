@@ -404,10 +404,62 @@ const ActivityMonitor: React.FC = () => {
                           <td className="px-4 py-3 text-sm text-gray-600">
                             {log.details ? (
                               <details className="cursor-pointer">
-                                <summary className="text-indigo-600 hover:text-indigo-800">View</summary>
-                                <pre className="mt-2 text-xs bg-gray-50 p-2 rounded overflow-auto max-w-xs">
-                                  {JSON.stringify(log.details, null, 2)}
-                                </pre>
+                                <summary className="text-indigo-600 hover:text-indigo-800 font-medium">
+                                  {log.action === 'UPDATE' && log.details.changes ? 
+                                    `${log.details.changesCount || log.details.changes.length} change(s)` : 
+                                    'View Details'}
+                                </summary>
+                                <div className="mt-2 text-xs bg-gray-50 p-3 rounded border border-gray-200 max-w-md">
+                                  {/* Special formatting for UPDATE actions with changes */}
+                                  {log.action === 'UPDATE' && log.details.changes && log.details.changes.length > 0 ? (
+                                    <div className="space-y-2">
+                                      <p className="font-semibold text-gray-700 mb-2">Fields Changed:</p>
+                                      {log.details.changes.map((change: { field: string; from: any; to: any }, idx: number) => (
+                                        <div key={idx} className="bg-white p-2 rounded border border-gray-200">
+                                          <span className="font-semibold text-gray-800 capitalize">{change.field}:</span>
+                                          <div className="flex items-center gap-2 mt-1">
+                                            <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded line-through">
+                                              {change.from || '(empty)'}
+                                            </span>
+                                            <span className="text-gray-400">→</span>
+                                            <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded">
+                                              {change.to || '(empty)'}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : log.action === 'UPDATE' && log.details.changes && log.details.changes.length === 0 ? (
+                                    <p className="text-gray-500 italic">No fields were changed</p>
+                                  ) : log.action === 'DELETE' ? (
+                                    <div className="space-y-1">
+                                      <p className="font-semibold text-red-700 mb-2">Deleted Record:</p>
+                                      {log.details.amount && <p><span className="font-medium">Amount:</span> €{log.details.amount}</p>}
+                                      {log.details.category && <p><span className="font-medium">Category:</span> {log.details.category}</p>}
+                                      {log.details.subCategory && <p><span className="font-medium">Sub-Category:</span> {log.details.subCategory}</p>}
+                                      {log.details.date && <p><span className="font-medium">Date:</span> {log.details.date.split('T')[0]}</p>}
+                                    </div>
+                                  ) : log.action === 'CREATE' ? (
+                                    <div className="space-y-1">
+                                      <p className="font-semibold text-blue-700 mb-2">Created Record:</p>
+                                      {log.details.amount && <p><span className="font-medium">Amount:</span> €{log.details.amount}</p>}
+                                      {log.details.category && <p><span className="font-medium">Category:</span> {log.details.category}</p>}
+                                      {log.details.subCategory && <p><span className="font-medium">Sub-Category:</span> {log.details.subCategory}</p>}
+                                      {log.details.date && <p><span className="font-medium">Date:</span> {log.details.date}</p>}
+                                    </div>
+                                  ) : log.action === 'IMPORT' ? (
+                                    <div className="space-y-1">
+                                      <p className="font-semibold text-purple-700 mb-2">Import Summary:</p>
+                                      {log.details.totalRecords && <p><span className="font-medium">Total Records:</span> {log.details.totalRecords}</p>}
+                                      {log.details.successful !== undefined && <p><span className="font-medium text-green-600">Successful:</span> {log.details.successful}</p>}
+                                      {log.details.failed !== undefined && <p><span className="font-medium text-red-600">Failed:</span> {log.details.failed}</p>}
+                                    </div>
+                                  ) : (
+                                    <pre className="overflow-auto whitespace-pre-wrap">
+                                      {JSON.stringify(log.details, null, 2)}
+                                    </pre>
+                                  )}
+                                </div>
                               </details>
                             ) : (
                               <span className="text-gray-400">-</span>

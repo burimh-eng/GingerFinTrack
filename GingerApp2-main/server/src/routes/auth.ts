@@ -58,4 +58,86 @@ export const requireAdmin = (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
+// Change own password
+router.post('/change-password', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { username, currentPassword, newPassword } = req.body;
+    
+    if (!username || !currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Username, current password, and new password are required' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { username } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const passwordValid = await bcrypt.compare(currentPassword, user.password);
+    if (!passwordValid) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({
+      where: { username },
+      data: { password: hashedPassword },
+    });
+
+    res.json({ success: true, message: 'Password changed successfully' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Admin reset password for another user (only Burim can do this)
+router.post('/reset-password', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { adminUsername, targetUsername, newPassword } = req.body;
+    
+    if (!adminUsername || !targetUsername || !newPassword) {
+      return res.status(400).json({ error: 'Admin username, target username, and new password are required' });
+    }
+
+    // Only Burim can reset other users' passwords
+    if (adminUsername !== 'Burim') {
+      return res.status(403).json({ error: 'Only Burim can reset other users passwords' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters' });
+    }
+
+    const targetUser = await prisma.user.findUnique({ where: { username: targetUsername } });
+    if (!targetUser) {
+      return res.status(404).json({ error: 'Target user not found' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({
+      where: { username: targetUsername },
+      data: { password: hashedPassword },
+    });
+
+    res.json({ success: true, message: `Password reset successfully for ${targetUsername}` });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Get all users (for admin to see who they can reset)
+router.get('/users', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: { username: true, fullName: true, role: true },
+    });
+    res.json(users);
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

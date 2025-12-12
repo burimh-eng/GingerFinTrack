@@ -23,13 +23,13 @@ const handleResponse = async <T>(res: Response): Promise<T> => {
 
 const mapApiTransaction = (api: ApiTransaction): Transaction => ({
   id: api.id,
-  date: api.txnDate.split('T')[0],
-  account: api.account.name,
-  category: api.subcategory.category.name as Transaction['category'],
-  subCategory: api.subcategory.name,
+  date: api.txnDate?.split('T')[0] ?? '',
+  account: api.account?.name ?? '',
+  category: (api.subcategory?.category?.name ?? 'Shpenzime') as Transaction['category'],
+  subCategory: api.subcategory?.name ?? '',
   notes: api.notes ?? '',
-  amount: Number(api.amount),
-  name: api.user.fullName,
+  amount: Number(api.amount) || 0,
+  name: api.user?.fullName ?? '',
   description: api.description ?? '',
 });
 
@@ -77,4 +77,20 @@ export const removeTransaction = async (id: string): Promise<void> => {
     const message = await res.text();
     throw new Error(message || 'Failed to delete transaction');
   }
+};
+
+export const updateTransaction = async (
+  id: string,
+  payload: Partial<TransactionInput>,
+): Promise<Transaction> => {
+  // Get current username from localStorage for audit logging
+  const username = localStorage.getItem('username') || 'Unknown';
+  
+  const res = await fetch(`${API_BASE}/transactions/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...payload, username }),
+  });
+  const data = await handleResponse<ApiTransaction>(res);
+  return mapApiTransaction(data);
 };
